@@ -13,8 +13,8 @@ DL_projet/
 ├─ configs/
 │  └─ base.yaml
 ├─ data/                        # (non inclus dans le dépôt) jeu de données local
-├─ outputs/                     # résultats (courbes, métriques, figures) – sans poids
-├─ rapport/                     # rapport final (6–10 pages)
+├─ outputs/                     # résultats 
+├─ rapport/                     # rapport final 
 ├─ src/
 │  ├─ data/
 │  │  ├─ build_manifest.py
@@ -111,8 +111,3 @@ Ces résultats sont utilisés pour la rédaction du rapport final (6–10 pages)
 
 ---
 
-## 7. Auteur
-
-Projet réalisé par :  
-**[Votre nom]**  
-Étudiant en informatique – CY Tech
