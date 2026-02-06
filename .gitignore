@@ -1,6 +1,27 @@
-# ===== 数据与输出 =====
-data/
-outputs/
+
+# ===== 数据集（不上传）=====
+/data/*
+!/data/.gitkeep
+
+# ===== 代码中的 data 模块（必须上传）=====
+!/src/data/
+!/src/data/**
+
+# ===== 输出结果：保留图像与表格，忽略模型权重 =====
+outputs/**/best.pt
+outputs/**/checkpoints/
+outputs/**/weights/
+outputs/**/*.pt
+outputs/**/*.pth
+
+# 允许上传的结果文件
+!outputs/**/curve_*.png
+!outputs/**/confusion_matrix_*.png
+!outputs/**/ablation_summary.png
+!outputs/**/metrics.csv
+!outputs/**/metrics.json
+!outputs/**/iou_stats.json
+!outputs/**/overlays/*.png
 
 # ===== 模型权重/大文件 =====
 *.pt
