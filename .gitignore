@@ -1,0 +1,29 @@
+# ===== 数据与输出 =====
+data/
+outputs/
+
+# ===== 模型权重/大文件 =====
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.npz
+
+# ===== 日志与缓存 =====
+*.log
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# ===== IDE / OS =====
+.idea/
+.DS_Store
+
+# ===== 虚拟环境（如果在项目内） =====
+.venv/
+venv/
+env/
+
+# ===== 其他可选（按需） =====
+*.numbers
