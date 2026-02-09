@@ -1,32 +1,3 @@
-"""train_o5.py
-
-O5：在 O2 的训练基础上，把 O4 的“注意力与植物区域的重合度(IoU)”加入训练目标（作为正则项）。
-
-老师 PDF 的核心诉求（用人话复述）：
-- O4：能把 attention rollout 叠加到图像上，并用 mask 计算 IoU（你已经做完）。
-- O5：把这个“重合度”(IoU)纳入 loss，让模型在训练时更倾向于把注意力放在植物上。
-
-实现策略（工程上可落地）：
-- 分类/识别的主损失：CrossEntropy（或 BCE，取决于 num_classes）
-- IoU 正则：
-    loss = loss_cls + lambda_iou * (1 - soft_iou(att_map, mask))
-  其中 att_map 来自 encoder 的 attention rollout（默认用 seg 分支）。
-
-注意：
-- 这里使用的是“soft IoU”，是可微的（att_map/mask 都是 float，做 soft intersection/union）。
-- attention rollout 的计算需要从 timm 的 Attention 模块里抓 attention matrix。
-  本项目已经在 src/interpretability/attention_rollout.py 里实现了 wrap/save 的逻辑；
-  我们这里复用它，并在训练中把 detach 关掉，让 IoU 项能反向传播。
-
-输出：
-- outputs/runs/O5/best.pt
-- outputs/runs/O5/curve_loss.png
-- outputs/runs/O5/curve_val_acc.png
-- outputs/runs/O5/curve_val_f1.png
-
-如果你只想快速验证流程，可以在 config 里把 epochs 设小一点。
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
