@@ -25,8 +25,6 @@ from src.interpretability.attention_rollout import (
     cls_to_patch_map,
 )
 
-
-
 # 工具函数
 def _ensure_project_root() -> Path:
     here = Path(__file__).resolve()

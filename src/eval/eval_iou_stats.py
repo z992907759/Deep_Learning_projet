@@ -20,7 +20,7 @@ from src.models.crossvit_like import CrossViTLike, O2SameResTwinViT, O3WeightedT
 
 
 def find_project_root() -> Path:
-    """从当前文件位置向上找到项目根目录（包含 configs/base.yaml）。"""
+    """从当前文件位置向上找到项目根目录（包含 configs/base.yaml）"""
     here = Path(__file__).resolve()
     for p in [here.parent] + list(here.parents):
         if (p / "configs" / "base.yaml").exists():
@@ -42,7 +42,7 @@ def _compute_iou(att_bin: np.ndarray, mask_bin: np.ndarray) -> float:
 
 
 def build_model_for_tag(cfg: Dict, tag: str) -> torch.nn.Module:
-    """根据 tag 构建与 best.pt 匹配的模型结构。"""
+    """根据 tag 构建与 best.pt 匹配的模型结构"""
     backbone = str(cfg["model"]["backbone"])
     num_classes = int(cfg["model"].get("num_classes", 2))
     pooling = str(cfg.get("model", {}).get("pooling", "cls"))

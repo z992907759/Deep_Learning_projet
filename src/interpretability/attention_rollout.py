@@ -10,7 +10,7 @@ from torch import nn
 def _get_timm_vit_blocks(enc: nn.Module) -> List[nn.Module]:
     blocks = getattr(enc, "blocks", None)
     if blocks is None:
-        raise AttributeError("找不到 enc.blocks（不是 timm VisionTransformer？）")
+        raise AttributeError("找不到 enc.blocks")
     return list(blocks)
 
 
