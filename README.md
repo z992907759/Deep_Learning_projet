@@ -130,46 +130,50 @@ Les résultats (courbes d’apprentissage, métriques, visualisations) sont auto
 1. Préparer les données localement dans `data/` (non incluses dans le dépôt).
 2. Générer le manifest :
    ```bash
-   python src/data/build_manifest.py
+   PYTHONPATH=. python src/data/build_manifest.py
    ```
 3. Entraîner les modèles de base (O1 – variantes A/B/C1/C2) :
    ```bash
    # Modifier experiment.mode dans configs/base.yaml puis lancer
    # mode: A
-   python src/train/train_o1.py
+   PYTHONPATH=. python src/train/train_o1.py
    # mode: B
-   python src/train/train_o1.py
+   PYTHONPATH=. python src/train/train_o1.py
    # mode: C1
-   python src/train/train_o1.py
+   PYTHONPATH=. python src/train/train_o1.py
    # mode: C2
-   python src/train/train_o1.py
+   PYTHONPATH=. python src/train/train_o1.py
    ```
 4. Entraîner le modèle bimodal à résolution identique (O2) :
    ```bash
-   python src/train/train_o2.py
+   PYTHONPATH=. python src/train/train_o2.py
    ```
 5. Entraîner le modèle avec pondération des patches (O3) :
    ```bash
-   python src/train/train_o3.py
+   PYTHONPATH=. python src/train/train_o3.py
    ```
 6. Générer les visualisations d’attention et statistiques IoU (O4) :
    ```bash
-   # Dans src/train/train_o4.py, ajuster tag: O1_A/O1_B/O1_C1/O1_C2/O2/O3 puis relancer
-   python src/train/train_o4.py
-   python src/eval/eval_iou_stats.py
+   # Dans src/train/train_o4.py, ajuster tag: O1_A/O1_B/O1_C1/O1_C2/O2/O3/O5 puis relancer
+   PYTHONPATH=. python src/train/train_o4.py
+   PYTHONPATH=. python src/eval/eval_iou_stats.py
    ```
 7. Entraîner le modèle avec régularisation IoU (O5) :
    ```bash
-   python src/train/train_o5.py
+   PYTHONPATH=. python src/train/train_o5.py
    ```
 8. Évaluer la matrice de confusion (modèle final) :
    ```bash
-   python src/eval/eval_confusion.py
+   PYTHONPATH=. python src/eval/eval_confusion.py
    ```
 9. Générer le tableau d’ablation récapitulatif :
    ```bash
-   python src/eval/eval_ablation_summary.py
+   PYTHONPATH=. python src/eval/eval_ablation_summary.py
    ```
+
+Notes pratiques :
+- `src/eval/eval_iou_stats.py` réutilise automatiquement les résultats déjà calculés dans `outputs/runs/O4/<tag>/iou_stats.json` s’ils existent.
+- Pour éviter les conflits de noms de modules (`src/eval.py` et `src/eval/`), préférez exécuter les scripts avec `PYTHONPATH=.` comme ci-dessus.
 
 ---
 
