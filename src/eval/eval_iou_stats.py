@@ -41,16 +41,42 @@ def _compute_iou(att_bin: np.ndarray, mask_bin: np.ndarray) -> float:
     return float(inter / union) if union > 0 else 0.0
 
 
+def _select_o4_inputs_and_branch(tag: str, raw: torch.Tensor, seg: torch.Tensor):
+    if tag == "O1_A":
+        return raw, raw, "raw"
+    if tag == "O1_B":
+        return seg, seg, "seg"
+    if tag == "O1_C1":
+        return raw, seg, "seg"
+    if tag == "O1_C2":
+        return seg, raw, "raw"
+    if tag in {"O2", "O3", "O5"}:
+        return raw, seg, "seg"
+    return raw, seg, "seg"
+
+
 def build_model_for_tag(cfg: Dict, tag: str) -> torch.nn.Module:
     """根据 tag 构建与 best.pt 匹配的模型结构"""
     backbone = str(cfg["model"]["backbone"])
+    backbone_small = str(cfg["model"].get("backbone_small", backbone))
+    backbone_large = str(cfg["model"].get("backbone_large", backbone))
     num_classes = int(cfg["model"].get("num_classes", 2))
     pooling = str(cfg.get("model", {}).get("pooling", "cls"))
     share_weights = bool(cfg.get("model", {}).get("share_weights", False))
+    cross_attn_heads = int(cfg.get("model", {}).get("cross_attn_heads", 8))
+    fusion_dim = cfg.get("model", {}).get("fusion_dim", None)
 
     if tag.startswith("O1_"):
         # O1: CrossViTLike（raw_enc/seg_enc）
-        return CrossViTLike(backbone=backbone, num_classes=num_classes, pooling=pooling)
+        return CrossViTLike(
+            backbone_small=backbone_small,
+            backbone_large=backbone_large,
+            num_classes=num_classes,
+            pooling=pooling,
+            cross_attn_heads=cross_attn_heads,
+            fusion_dim=(int(fusion_dim) if fusion_dim is not None else None),
+            pretrained=False,
+        )
 
     if tag == "O2":
         return O2SameResTwinViT(
@@ -91,10 +117,10 @@ def build_model_for_tag(cfg: Dict, tag: str) -> torch.nn.Module:
 @torch.no_grad()
 def eval_iou_for_tag(
     model: torch.nn.Module,
+    tag: str,
     loader: DataLoader,
     device: torch.device,
     quantile: float = 0.8,
-    branch: str = "seg",
 ) -> List[float]:
     # 计算 tag 的 iou 统计
     ious: List[float] = []
@@ -118,8 +144,9 @@ def eval_iou_for_tag(
         for i in range(B):
             r = raw[i : i + 1]
             s = seg[i : i + 1]
+            x1, x2, branch = _select_o4_inputs_and_branch(tag, r, s)
 
-            patch_map = rollout_patch_map_from_model(model, r, s, branch=branch)
+            patch_map = rollout_patch_map_from_model(model, x1, x2, branch=branch)
             patch_map = patch_map.float().unsqueeze(0).unsqueeze(0)
 
             # upsample 到原图大小
@@ -146,7 +173,6 @@ def main():
 
     tags = ["O1_A", "O1_B", "O1_C1", "O1_C2", "O2", "O3", "O5"]
     quantile = 0.8
-    branch = "seg"
 
     # 数据集（与训练一致）
     transform = PairedTransform(image_size=int(cfg.get("data", {}).get("image_size", 224)))
@@ -177,6 +203,31 @@ def main():
     summary_rows: List[Tuple[str, int, float, float]] = []
 
     for tag in tags:
+        o4_stats_path = project_root / "outputs" / "runs" / "O4" / tag / "iou_stats.json"
+        if o4_stats_path.exists():
+            with open(o4_stats_path, "r", encoding="utf-8") as f:
+                o4_stats = json.load(f)
+            n_val = int(o4_stats.get("n_val", 0))
+            iou_mean = float(o4_stats.get("iou_mean", 0.0))
+            iou_std = float(o4_stats.get("iou_std", 0.0))
+            stats = {
+                "tag": tag,
+                "n_val": n_val,
+                "quantile": float(o4_stats.get("quantile", quantile)),
+                "iou_mean": iou_mean,
+                "iou_std": iou_std,
+            }
+
+            out_dir = out_root / tag
+            out_dir.mkdir(parents=True, exist_ok=True)
+            with open(out_dir / "iou_stats.json", "w", encoding="utf-8") as f:
+                json.dump(stats, f, indent=2, ensure_ascii=False)
+
+            summary_rows.append((tag, stats["n_val"], stats["iou_mean"], stats["iou_std"]))
+            print(f"[OK] {tag} IoU mean/std = {stats['iou_mean']:.4f} / {stats['iou_std']:.4f} (from O4)")
+            print(f"[OK] saved {out_dir / 'iou_stats.json'}")
+            continue
+
         ckpt = project_root / "outputs" / "runs" / tag / "best.pt"
         if not ckpt.exists():
             print(f"[SKIP] {tag}: 找不到 {ckpt}")
@@ -188,14 +239,13 @@ def main():
         model = model.to(device)
 
         print(f"\n[{tag}] evaluating IoU ... ({ckpt.name})")
-        ious = eval_iou_for_tag(model, val_loader, device=device, quantile=quantile, branch=branch)
+        ious = eval_iou_for_tag(model, tag=tag, loader=val_loader, device=device, quantile=quantile)
         ious_np = np.array(ious, dtype=np.float32)
 
         stats = {
             "tag": tag,
             "n_val": int(len(ious_np)),
             "quantile": float(quantile),
-            "branch": branch,
             "iou_mean": float(ious_np.mean()) if len(ious_np) else 0.0,
             "iou_std": float(ious_np.std()) if len(ious_np) else 0.0,
             "iou_min": float(ious_np.min()) if len(ious_np) else 0.0,

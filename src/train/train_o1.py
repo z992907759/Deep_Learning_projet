@@ -76,11 +76,20 @@ def main():
     )
 
     pooling = cfg["model"].get("pooling", "cls")
+    backbone_small = cfg["model"].get("backbone_small", cfg["model"].get("backbone"))
+    backbone_large = cfg["model"].get("backbone_large", cfg["model"].get("backbone"))
+    cross_attn_heads = int(cfg["model"].get("cross_attn_heads", 8))
+    fusion_dim = cfg["model"].get("fusion_dim", None)
+    pretrained = bool(cfg["model"].get("pretrained", True))
 
     model = CrossViTLike(
-        backbone=cfg["model"]["backbone"],
+        backbone_small=backbone_small,
+        backbone_large=backbone_large,
         num_classes=int(cfg["model"]["num_classes"]),
         pooling=pooling,
+        cross_attn_heads=cross_attn_heads,
+        fusion_dim=(int(fusion_dim) if fusion_dim is not None else None),
+        pretrained=pretrained,
     ).to(device)
 
     opt = torch.optim.AdamW(

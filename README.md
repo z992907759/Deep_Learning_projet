@@ -3,6 +3,7 @@
 Ce dépôt contient le code, les configurations et les résultats expérimentaux du projet de Deep Learning réalisé dans le cadre du cours **Deep Learning (CY Tech)** – année universitaire 2025–2026.
 
 Le projet vise à étudier l’apport de l’architecture **CrossViT** pour la classification d’images de plantes, en combinant des informations issues d’images brutes (*raw*) et d’images segmentées (*seg*), ainsi qu’à analyser l’interprétabilité des modèles à l’aide de cartes d’attention.
+Les variantes O1/O2 utilisent une fusion explicite par **cross-attention** entre branches.
 
 ---
 
@@ -62,8 +63,8 @@ Les données doivent être placées localement dans un dossier `data/` selon l�
 
 Le projet est structuré en cinq objectifs successifs :
 
-- **O1** – Étude de modèles de base et variantes mono- et bi-branches  
-- **O2** – Fusion bimodale raw / seg  
+- **O1** – Comparaison A/B/C1/C2 avec architecture à deux branches **Small/Large** et fusion croisée par attention  
+- **O2** – Deux branches de même résolution (même patch size / nombre de tokens) avec fusion croisée par attention  
 - **O3** – Pondération des patches à partir de l’image segmentée  
 - **O4** – Interprétabilité par attention rollout et évaluation IoU  
 - **O5** – Ajout d’un terme de régularisation basé sur l’IoU  
@@ -114,6 +115,14 @@ Les paramètres principaux (batch size, learning rate, nombre d’epochs, seed, 
 configs/base.yaml
 ```
 
+Champs importants pour O1/O2 :
+- `model.backbone_small`
+- `model.backbone_large`
+- `model.cross_attn_heads`
+- `model.fusion_dim`
+- `model.pooling`
+- `model.pretrained`
+
 Les résultats (courbes d’apprentissage, métriques, visualisations) sont automatiquement sauvegardés dans le dossier `outputs/`.
 
 ### Ordre recommandé (reproductibilité)
@@ -125,6 +134,14 @@ Les résultats (courbes d’apprentissage, métriques, visualisations) sont auto
    ```
 3. Entraîner les modèles de base (O1 – variantes A/B/C1/C2) :
    ```bash
+   # Modifier experiment.mode dans configs/base.yaml puis lancer
+   # mode: A
+   python src/train/train_o1.py
+   # mode: B
+   python src/train/train_o1.py
+   # mode: C1
+   python src/train/train_o1.py
+   # mode: C2
    python src/train/train_o1.py
    ```
 4. Entraîner le modèle bimodal à résolution identique (O2) :
@@ -137,6 +154,7 @@ Les résultats (courbes d’apprentissage, métriques, visualisations) sont auto
    ```
 6. Générer les visualisations d’attention et statistiques IoU (O4) :
    ```bash
+   # Dans src/train/train_o4.py, ajuster tag: O1_A/O1_B/O1_C1/O1_C2/O2/O3 puis relancer
    python src/train/train_o4.py
    python src/eval/eval_iou_stats.py
    ```

@@ -25,6 +25,20 @@ def _compute_iou(att_bin: np.ndarray, mask_bin: np.ndarray) -> float:
     return float(inter / union) if union > 0 else 0.0
 
 
+def _select_o4_inputs_and_branch(tag: str, raw: torch.Tensor, seg: torch.Tensor):
+    if tag == "O1_A":
+        return raw, raw, "raw"
+    if tag == "O1_B":
+        return seg, seg, "seg"
+    if tag == "O1_C1":
+        return raw, seg, "seg"
+    if tag == "O1_C2":
+        return seg, raw, "raw"
+    if tag in {"O2", "O3", "O5"}:
+        return raw, seg, "seg"
+    return raw, seg, "seg"
+
+
 @torch.no_grad()
 def main():
     here = Path(__file__).resolve()
@@ -70,6 +84,8 @@ def main():
         large = cfg.get("model", {}).get("backbone_large", cfg["model"]["backbone"])
         num_classes = int(cfg["model"]["num_classes"])
         pooling = cfg.get("model", {}).get("pooling", "cls")
+        cross_attn_heads = int(cfg.get("model", {}).get("cross_attn_heads", 8))
+        fusion_dim = cfg.get("model", {}).get("fusion_dim", None)
 
         kwargs = {}
         if "backbone_small" in params:
@@ -95,6 +111,12 @@ def main():
 
         if "pooling" in params:
             kwargs["pooling"] = pooling
+        if "cross_attn_heads" in params:
+            kwargs["cross_attn_heads"] = cross_attn_heads
+        if "fusion_dim" in params:
+            kwargs["fusion_dim"] = (int(fusion_dim) if fusion_dim is not None else None)
+        if "pretrained" in params:
+            kwargs["pretrained"] = False
 
         try:
             model = CrossViTLike(**kwargs)
@@ -110,6 +132,7 @@ def main():
         model = O2SameResTwinViT(
             backbone=cfg["model"]["backbone"],
             num_classes=int(cfg["model"]["num_classes"]),
+            pretrained=False,
         )
     elif tag == "O3":
         model = O3WeightedTwinViT(
@@ -117,11 +140,13 @@ def main():
             num_classes=int(cfg["model"]["num_classes"]),
             pooling="wmean",
             share_weights=False,
+            pretrained=False,
         )
     else:
         model = O2SameResTwinViT(
             backbone=cfg["model"]["backbone"],
             num_classes=int(cfg["model"]["num_classes"]),
+            pretrained=False,
         )
 
     try:
@@ -147,13 +172,14 @@ def main():
         batch = ds[idx]
         raw = batch["raw"].unsqueeze(0).to(device)   # (1,3,H,W)
         seg = batch["seg"].unsqueeze(0).to(device)
+        x1, x2, rollout_branch = _select_o4_inputs_and_branch(tag, raw, seg)
         mask = batch["mask"]                         # (H,W) 或 (1,H,W)
         if mask.dim() == 3:
             mask = mask[0]
         mask_bin = (mask.detach().cpu().numpy() > 0.5)
 
-        rollout_patch = rollout_patch_map_from_model(model, raw, seg, branch="seg")  # (h_patch, w_patch)
-        rollout_map = torch.tensor(rollout_patch).float().unsqueeze(0).unsqueeze(0)  # (1,1,h,w)
+        rollout_patch = rollout_patch_map_from_model(model, x1, x2, branch=rollout_branch)  # (h_patch, w_patch)
+        rollout_map = torch.as_tensor(rollout_patch).float().unsqueeze(0).unsqueeze(0)  # (1,1,h,w)
 
         rollout_map = torch.nn.functional.interpolate(
             rollout_map, size=raw.shape[-2:], mode="bilinear", align_corners=False
